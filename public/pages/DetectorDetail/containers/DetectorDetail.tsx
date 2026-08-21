@@ -502,6 +502,8 @@ export const DetectorDetail = (props: DetectorDetailProps) => {
                       data-resource-share-button
                       data-resource-id={detectorId}
                       data-resource-type={AD_RESOURCE_TYPE}
+                      data-resource-hide-status
+                      {...(detector?.name ? { 'data-resource-name': detector.name } : {})}
                       {...(dataSourceId ? { 'data-resource-data-source-id': dataSourceId } : {})}
                     />
                   </EuiFlexItem>

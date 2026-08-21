@@ -208,6 +208,8 @@ export const ForecasterControls = (props: ForecasterControlsProps) => {
                     data-resource-share-button
                     data-resource-id={currentForecaster.id}
                     data-resource-type={FORECASTER_RESOURCE_TYPE}
+                    data-resource-hide-status
+                    {...(currentForecaster.name ? { 'data-resource-name': currentForecaster.name } : {})}
                     {...(dataSourceId ? { 'data-resource-data-source-id': dataSourceId } : {})}
                 />
             );

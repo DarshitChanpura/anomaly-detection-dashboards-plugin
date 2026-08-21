@@ -111,15 +111,15 @@ export function getDataGridColumns(): EuiDataGridColumn[] {
             // is mounted here by security-dashboards-plugin when installed and
             // resource sharing is enabled for forecasters.
             id: 'share',
-            displayAsText: 'Share',
+            displayAsText: 'Access',
             display: (
               <EuiToolTip content="Manage who this forecaster is shared with">
-                <span style={columnStyle}>Share</span>
+                <span style={columnStyle}>Access</span>
               </EuiToolTip>
             ),
             isSortable: false,
             schema: 'string',
-            initialWidth: 60,
+            initialWidth: 120,
           } as EuiDataGridColumn,
         ]
       : []),
@@ -190,6 +190,7 @@ export function renderCellValueFactory(
               data-resource-share-button
               data-resource-id={forecaster.id}
               data-resource-type={FORECASTER_RESOURCE_TYPE}
+              {...(forecaster.name ? { 'data-resource-name': forecaster.name } : {})}
               data-resource-share-display="icon"
               {...(dataSourceId
                 ? { 'data-resource-data-source-id': dataSourceId }
