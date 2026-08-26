@@ -11,6 +11,11 @@
 
 import { getColumns } from '../../utils/tableUtils';
 import { render } from '@testing-library/react';
+import { isResourceSharingAvailable } from '../../../utils/helpers';
+
+jest.mock('../../../utils/helpers', () => ({
+  isResourceSharingAvailable: jest.fn(),
+}));
 
 describe('tableUtils spec', () => {
   describe('should render the column titles', () => {
@@ -49,5 +54,53 @@ describe('tableUtils spec', () => {
       const { getByText } = render(result[6].name);
       getByText('Last started');
     });
+  });
+});
+
+describe('resource sharing Access column', () => {
+  const mockIsAvailable = isResourceSharingAvailable as jest.Mock;
+
+  afterEach(() => mockIsAvailable.mockReset());
+
+  test('appends an Access column with a share-button marker when resource sharing is available', () => {
+    mockIsAvailable.mockReturnValue(true);
+    const columns = getColumns('cluster-1');
+    const accessColumn = columns[columns.length - 1];
+
+    const { container: headerContainer } = render(accessColumn.name);
+    expect(headerContainer.textContent).toContain('Access');
+
+    const { container } = render(
+      accessColumn.render({ id: 'detector-1', name: 'my detector' })
+    );
+    const marker = container.querySelector('[data-resource-share-button]');
+    expect(marker).not.toBeNull();
+    expect(marker!.getAttribute('data-resource-id')).toBe('detector-1');
+    expect(marker!.getAttribute('data-resource-type')).toBe('anomaly-detector');
+    expect(marker!.getAttribute('data-resource-name')).toBe('my detector');
+    expect(marker!.getAttribute('data-resource-share-display')).toBe('icon');
+    expect(marker!.getAttribute('data-resource-data-source-id')).toBe(
+      'cluster-1'
+    );
+  });
+
+  test('omits the data source id attribute when no dataSourceId is provided', () => {
+    mockIsAvailable.mockReturnValue(true);
+    const columns = getColumns('');
+    const accessColumn = columns[columns.length - 1];
+
+    const { container } = render(
+      accessColumn.render({ id: 'detector-2', name: 'another detector' })
+    );
+    const marker = container.querySelector('[data-resource-share-button]');
+    expect(marker!.getAttribute('data-resource-data-source-id')).toBeNull();
+  });
+
+  test('does not append the Access column when resource sharing is unavailable', () => {
+    mockIsAvailable.mockReturnValue(false);
+    const withoutAccess = getColumns('cluster-1').length;
+    mockIsAvailable.mockReturnValue(true);
+    const withAccess = getColumns('cluster-1').length;
+    expect(withAccess).toBe(withoutAccess + 1);
   });
 });
