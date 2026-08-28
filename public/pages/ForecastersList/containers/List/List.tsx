@@ -816,7 +816,7 @@ const handleStartForecasterJob = async (forecasterId: string, forecasterName: st
                  * row heights and truncates longer text values appropriately.
                  */
                 rowHeightsOptions={{
-                  defaultHeight: 'auto',
+                  defaultHeight: { lineCount: 1 },
                 }}
                 key={gridKey}
               />
