@@ -100,6 +100,16 @@ export function registerADRoutes(apiRouter: Router, adService: AdService) {
   apiRouter.get('/detectors/_list', adService.getDetectors);
   apiRouter.get('/detectors/_list/{dataSourceId}', adService.getDetectors);
 
+  // Per-data-source resource-sharing availability probe (fail-closed).
+  apiRouter.get(
+    '/resource_sharing_availability/{resourceType}',
+    adService.getResourceSharingAvailability
+  );
+  apiRouter.get(
+    '/resource_sharing_availability/{resourceType}/{dataSourceId}',
+    adService.getResourceSharingAvailability
+  );
+
   // preview detector
   apiRouter.post('/detectors/preview', adService.previewDetector);
   apiRouter.post('/detectors/preview/{dataSourceId}', adService.previewDetector);
@@ -216,6 +226,47 @@ export function registerADRoutes(apiRouter: Router, adService: AdService) {
 import { MDSEnabledClientService } from '../services/MDSEnabledClientService';
 
 export default class AdService extends MDSEnabledClientService {
+  // Probes the SELECTED data source to determine whether the security
+  // plugin's resource-sharing framework is available for the given resource
+  // type there. Availability is per-data-source (a backend cluster/collection
+  // setting), not the local Dashboards capability, so the Access column is
+  // only shown for data sources that actually support resource sharing (for
+  // example, not AOSS or pre-resource-sharing AOS versions). Fails closed:
+  // any error is treated as "not available".
+  getResourceSharingAvailability = async (
+    context: RequestHandlerContext,
+    request: OpenSearchDashboardsRequest,
+    opensearchDashboardsResponse: OpenSearchDashboardsResponseFactory
+  ): Promise<IOpenSearchDashboardsResponse<any>> => {
+    const { resourceType } = request.params as { resourceType: string };
+    const { dataSourceId = '' } = request.params as { dataSourceId?: string };
+    try {
+      const callWithRequest = getClientBasedOnDataSource(
+        context,
+        this.dataSourceEnabled,
+        request,
+        dataSourceId,
+        this.client
+      );
+      const response = await callWithRequest('transport.request', {
+        method: 'GET',
+        path: '/_plugins/_security/api/resource/types',
+      });
+      const types: string[] = (response?.types ?? []).map(
+        (t: { type: string }) => t.type
+      );
+      return opensearchDashboardsResponse.ok({
+        body: { ok: true, available: types.includes(resourceType) },
+      });
+    } catch (e) {
+      // Resource sharing is unavailable on this data source (feature disabled,
+      // endpoint absent on older versions, or serverless). Fail closed.
+      return opensearchDashboardsResponse.ok({
+        body: { ok: true, available: false },
+      });
+    }
+  };
+
   deleteDetector = async (
     context: RequestHandlerContext,
     request: OpenSearchDashboardsRequest,

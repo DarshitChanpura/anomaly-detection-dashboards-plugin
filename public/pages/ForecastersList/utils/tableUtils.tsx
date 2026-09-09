@@ -22,7 +22,6 @@ import {
   FORECASTING_FEATURE_NAME,
   FORECASTER_RESOURCE_TYPE,
 } from '../../../utils/constants';
-import { isResourceSharingAvailable } from '../../utils/helpers';
 import { FORECASTER_STATE, FORECASTER_STATE_TO_DISPLAY } from '../../../../server/utils/constants';
 import { forecastStateToColorMap } from '../../utils/constants';
 import { CurStateCell } from './CurStateCell';
@@ -56,7 +55,9 @@ export const renderState = (state: FORECASTER_STATE) => {
   );
 };
 
-export function getDataGridColumns(): EuiDataGridColumn[] {
+export function getDataGridColumns(
+  resourceSharingAvailable = false
+): EuiDataGridColumn[] {
   return [
     {
       id: 'name',
@@ -104,7 +105,7 @@ export function getDataGridColumns(): EuiDataGridColumn[] {
       schema: 'datetime', // from dataType 'date'
       defaultSortDirection: 'desc',
     },
-    ...(isResourceSharingAvailable(FORECASTER_RESOURCE_TYPE)
+    ...(resourceSharingAvailable
       ? [
           {
             // Resource-sharing SPI marker column: the centralized Share button

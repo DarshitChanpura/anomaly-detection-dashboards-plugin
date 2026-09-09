@@ -22,7 +22,6 @@ import { get, isEmpty } from 'lodash';
 import React from 'react';
 import { Detector } from '../../../models/interfaces';
 import { AD_RESOURCE_TYPE, PLUGIN_NAME } from '../../../utils/constants';
-import { isResourceSharingAvailable } from '../../utils/helpers';
 import { DETECTOR_STATE } from '../../../../server/utils/constants';
 import { stateToColorMap } from '../../utils/constants';
 
@@ -52,7 +51,7 @@ export const renderState = (state: DETECTOR_STATE) => {
   );
 };
 
-export function getColumns(dataSourceId) {
+export function getColumns(dataSourceId, resourceSharingAvailable = false) {
   return [
     {
       field: 'name',
@@ -167,7 +166,7 @@ export function getColumns(dataSourceId) {
       width: '16%',
       render: renderTime,
     },
-    ...(isResourceSharingAvailable()
+    ...(resourceSharingAvailable
       ? [
           {
             // Resource-sharing SPI marker column: the centralized Share button is

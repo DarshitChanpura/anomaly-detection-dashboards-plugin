@@ -11,11 +11,6 @@
 
 import { getColumns } from '../../utils/tableUtils';
 import { render } from '@testing-library/react';
-import { isResourceSharingAvailable } from '../../../utils/helpers';
-
-jest.mock('../../../utils/helpers', () => ({
-  isResourceSharingAvailable: jest.fn(),
-}));
 
 describe('tableUtils spec', () => {
   describe('should render the column titles', () => {
@@ -58,13 +53,8 @@ describe('tableUtils spec', () => {
 });
 
 describe('resource sharing Access column', () => {
-  const mockIsAvailable = isResourceSharingAvailable as jest.Mock;
-
-  afterEach(() => mockIsAvailable.mockReset());
-
   test('appends an Access column with a share-button marker when resource sharing is available', () => {
-    mockIsAvailable.mockReturnValue(true);
-    const columns = getColumns('cluster-1');
+    const columns = getColumns('cluster-1', true);
     const accessColumn = columns[columns.length - 1];
 
     const { container: headerContainer } = render(accessColumn.name);
@@ -85,8 +75,7 @@ describe('resource sharing Access column', () => {
   });
 
   test('omits the data source id attribute when no dataSourceId is provided', () => {
-    mockIsAvailable.mockReturnValue(true);
-    const columns = getColumns('');
+    const columns = getColumns('', true);
     const accessColumn = columns[columns.length - 1];
 
     const { container } = render(
@@ -97,10 +86,8 @@ describe('resource sharing Access column', () => {
   });
 
   test('does not append the Access column when resource sharing is unavailable', () => {
-    mockIsAvailable.mockReturnValue(false);
-    const withoutAccess = getColumns('cluster-1').length;
-    mockIsAvailable.mockReturnValue(true);
-    const withAccess = getColumns('cluster-1').length;
+    const withoutAccess = getColumns('cluster-1', false).length;
+    const withAccess = getColumns('cluster-1', true).length;
     expect(withAccess).toBe(withoutAccess + 1);
   });
 });

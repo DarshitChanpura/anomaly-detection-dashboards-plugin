@@ -60,6 +60,7 @@ import {
   filterAndSortForecasters,
   getAllForecastersQueryParamsWithDataSourceId,
   getDataSourceFromURL,
+  getResourceSharingAvailability,
   getVisibleOptions,
   isForecastingDataSourceCompatible,
   sanitizeSearchText,
@@ -70,6 +71,7 @@ import {
   EMPTY_FORECASTER_STATES,
   ALL_INDICES,
   SINGLE_FORECASTER_NOT_FOUND_MSG,
+  FORECASTER_RESOURCE_TYPE,
 } from '../../../utils/constants';
 import { BREADCRUMBS } from '../../../../utils/constants';
 import {
@@ -222,6 +224,24 @@ export const ForecastersList = (props: ListProps) => {
       });
     }
     intializeForecasters();
+  }, [state.selectedDataSourceId]);
+
+  // Whether resource sharing is available on the SELECTED data source. Gates
+  // the Access column per data source (a backend setting), rather than the
+  // local Dashboards capability. Defaults to false and fails closed.
+  const [resourceSharingAvailable, setResourceSharingAvailable] =
+    useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    getResourceSharingAvailability(
+      FORECASTER_RESOURCE_TYPE,
+      state.selectedDataSourceId
+    ).then((available) => {
+      if (!cancelled) setResourceSharingAvailable(available);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [state.selectedDataSourceId]);
 
   const intializeForecasters = async () => {
@@ -580,7 +600,7 @@ export const ForecastersList = (props: ListProps) => {
     }, [getSavedObjectsClient(), getNotifications(), props.setActionMenu]);
   }
 
-  const columns = getDataGridColumns();
+  const columns = getDataGridColumns(resourceSharingAvailable);
 
   const createForecasterUrl = `${FORECASTING_FEATURE_NAME}#` + constructHrefWithDataSourceId(APP_PATH.CREATE_FORECASTER, state.selectedDataSourceId, false);
 

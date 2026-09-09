@@ -19,7 +19,6 @@ import {
   DEFAULT_EMPTY_DATA,
 } from '../tableUtils';
 import { FORECASTER_STATE, FORECASTER_STATE_TO_DISPLAY } from '../../../../../server/utils/constants';
-import { isResourceSharingAvailable } from '../../../utils/helpers';
 
 // Mock moment
 jest.mock('moment', () => {
@@ -65,11 +64,6 @@ jest.mock('../CurStateCell', () => ({
 jest.mock('../../../../utils/constants', () => ({
   FORECASTING_FEATURE_NAME: 'forecasting',
   FORECASTER_RESOURCE_TYPE: 'forecaster',
-}));
-
-// Mock the resource-sharing capability helper so we can toggle availability
-jest.mock('../../../utils/helpers', () => ({
-  isResourceSharingAvailable: jest.fn(),
 }));
 
 describe('tableUtils', () => {
@@ -492,13 +486,8 @@ describe('tableUtils', () => {
 });
 
 describe('resource sharing (share) column', () => {
-  const mockIsAvailable = isResourceSharingAvailable as jest.Mock;
-
-  afterEach(() => mockIsAvailable.mockReset());
-
   test('appends a share column when resource sharing is available for forecasters', () => {
-    mockIsAvailable.mockReturnValue(true);
-    const columns = getDataGridColumns();
+    const columns = getDataGridColumns(true);
     expect(columns).toHaveLength(5);
     expect(columns[columns.length - 1]).toEqual(
       expect.objectContaining({
@@ -510,8 +499,7 @@ describe('resource sharing (share) column', () => {
   });
 
   test('does not append a share column when resource sharing is unavailable', () => {
-    mockIsAvailable.mockReturnValue(false);
-    const columns = getDataGridColumns();
+    const columns = getDataGridColumns(false);
     expect(columns).toHaveLength(4);
     expect(columns.some((column) => column.id === 'share')).toBe(false);
   });

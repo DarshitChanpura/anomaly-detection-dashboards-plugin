@@ -60,6 +60,7 @@ import {
   ALL_DETECTOR_STATES,
   ALL_INDICES,
   SINGLE_DETECTOR_NOT_FOUND_MSG,
+  AD_RESOURCE_TYPE,
 } from '../../../utils/constants';
 import { BREADCRUMBS } from '../../../../utils/constants';
 import {
@@ -70,6 +71,7 @@ import {
 import {
   filterAndSortDetectors,
   getDetectorsToDisplay,
+  getResourceSharingAvailability,
 } from '../../../utils/helpers';
 import { getColumns } from '../../utils/tableUtils';
 import { DETECTOR_ACTION } from '../../utils/constants';
@@ -177,6 +179,12 @@ export const DetectorList = (props: ListProps) => {
 
   const [localClusterName, setLocalClusterName] = useState("");
 
+  // Whether resource sharing is available on the SELECTED data source. Gates
+  // the Access column per data source (a backend setting), rather than the
+  // local Dashboards capability. Defaults to false and fails closed.
+  const [resourceSharingAvailable, setResourceSharingAvailable] =
+    useState<boolean>(false);
+
   // Getting all initial monitors
   useEffect(() => {
     const getInitialMonitors = async () => {
@@ -254,6 +262,20 @@ export const DetectorList = (props: ListProps) => {
       await dispatch(getIndicesAndAliases(indexQuery, state.selectedDataSourceId, "*"))
     };
     getInitialIndices();
+  }, [state.selectedDataSourceId]);
+
+  // Probe resource-sharing availability on the selected data source.
+  useEffect(() => {
+    let cancelled = false;
+    getResourceSharingAvailability(
+      AD_RESOURCE_TYPE,
+      state.selectedDataSourceId
+    ).then((available) => {
+      if (!cancelled) setResourceSharingAvailable(available);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [state.selectedDataSourceId]);
 
   // Refresh data if user change any parameters / filter / sort
@@ -737,7 +759,7 @@ export const DetectorList = (props: ListProps) => {
     }, [getSavedObjectsClient(), getNotifications(), props.setActionMenu]);
   }
 
-  const columns = getColumns(state.selectedDataSourceId);
+  const columns = getColumns(state.selectedDataSourceId, resourceSharingAvailable);
 
   const createDetectorUrl =`${PLUGIN_NAME}#` + constructHrefWithDataSourceId(APP_PATH.CREATE_DETECTOR, state.selectedDataSourceId, false);
 

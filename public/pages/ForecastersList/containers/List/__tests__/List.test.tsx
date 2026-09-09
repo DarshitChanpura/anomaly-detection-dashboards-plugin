@@ -346,6 +346,7 @@ jest.mock('../../../../utils/helpers', () => ({
   getVisibleOptions: jest.fn(() => []),
   isDataSourceCompatible: jest.fn(() => true),
   sanitizeSearchText: jest.fn((text: string) => text),
+  getResourceSharingAvailability: jest.fn(() => Promise.resolve(false)),
 }));
 
 jest.mock('../../../utils/helpers', () => ({

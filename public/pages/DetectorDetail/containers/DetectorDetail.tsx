@@ -78,7 +78,7 @@ import {
 import {
   constructHrefWithDataSourceId,
   getDataSourceFromURL,
-  isResourceSharingAvailable,
+  getResourceSharingAvailability,
 } from '../../../pages/utils/helpers';
 import { isServerlessDataSource } from '../../../utils/dataSourceUtils';
 
@@ -142,6 +142,21 @@ export const DetectorDetail = (props: DetectorDetailProps) => {
     isServerlessDataSource(dataSourceId).then((result) => {
       if (!cancelled) setIsServerless(result);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceId]);
+
+  // Per-data-source resource-sharing availability gate for the share button.
+  const [resourceSharingAvailable, setResourceSharingAvailable] =
+    useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    getResourceSharingAvailability(AD_RESOURCE_TYPE, dataSourceId).then(
+      (available) => {
+        if (!cancelled) setResourceSharingAvailable(available);
+      }
+    );
     return () => {
       cancelled = true;
     };
@@ -496,7 +511,7 @@ export const DetectorDetail = (props: DetectorDetailProps) => {
               <EuiFlexGroup gutterSize="s" alignItems="center" responsive={false}>
                 {/* Resource-sharing SPI marker: security-dashboards-plugin mounts
                     its centralized Share button here when installed and enabled */}
-                {isResourceSharingAvailable() && (
+                {resourceSharingAvailable && (
                   <EuiFlexItem grow={false}>
                     <div
                       data-resource-share-button
