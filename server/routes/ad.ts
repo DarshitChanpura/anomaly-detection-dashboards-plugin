@@ -226,13 +226,10 @@ export function registerADRoutes(apiRouter: Router, adService: AdService) {
 import { MDSEnabledClientService } from '../services/MDSEnabledClientService';
 
 export default class AdService extends MDSEnabledClientService {
-  // Probes the SELECTED data source to determine whether the security
-  // plugin's resource-sharing framework is available for the given resource
-  // type there. Availability is per-data-source (a backend cluster/collection
-  // setting), not the local Dashboards capability, so the Access column is
-  // only shown for data sources that actually support resource sharing (for
-  // example, not AOSS or pre-resource-sharing AOS versions). Fails closed:
-  // any error is treated as "not available".
+  // Whether the security plugin's resource-sharing framework is available for
+  // the given resource type on the selected data source. Gated on the feature
+  // flag and per-type, per data source (not the local Dashboards capability).
+  // Fails closed.
   getResourceSharingAvailability = async (
     context: RequestHandlerContext,
     request: OpenSearchDashboardsRequest,
@@ -274,8 +271,7 @@ export default class AdService extends MDSEnabledClientService {
         body: { ok: true, available: types.includes(resourceType) },
       });
     } catch (e) {
-      // Resource sharing is unavailable on this data source (feature disabled,
-      // endpoint absent on older versions, or serverless). Fail closed.
+      // Feature disabled or endpoint absent on older versions. Fail closed.
       return opensearchDashboardsResponse.ok({
         body: { ok: true, available: false },
       });

@@ -433,13 +433,9 @@ export const mapToVisibleForecasterOptions = (items: any[], key: string) =>
  * involved.
  */
 /**
- * Whether resource sharing is available for the given resource type on the
- * SELECTED data source. Resource sharing is a backend, per-cluster setting, so
- * this probes the selected data source's security resource-types API and gates
- * the UI per data source rather than using the local Dashboards capability.
- * Fails closed (returns false) on any error, including data sources that do
- * not support resource sharing (for example AOSS, or AOS versions predating
- * the feature).
+ * Whether resource sharing is available for `resourceType` on the selected data
+ * source. Probes the security resource-types API per data source rather than
+ * using the local Dashboards capability. Fails closed on error.
  */
 export async function getResourceSharingAvailability(
   resourceType: string = AD_RESOURCE_TYPE,
