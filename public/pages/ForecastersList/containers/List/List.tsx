@@ -229,20 +229,28 @@ export const ForecastersList = (props: ListProps) => {
   // Whether resource sharing is available on the SELECTED data source. Gates
   // the Access column per data source (a backend setting), rather than the
   // local Dashboards capability. Defaults to false and fails closed.
-  const [resourceSharingAvailable, setResourceSharingAvailable] =
-    useState<boolean>(false);
+  const [resourceSharing, setResourceSharing] = useState<{
+    dataSourceId: string | undefined;
+    available: boolean;
+  }>({ dataSourceId: undefined, available: false });
   useEffect(() => {
     let cancelled = false;
     getResourceSharingAvailability(
       FORECASTER_RESOURCE_TYPE,
       state.selectedDataSourceId
     ).then((available) => {
-      if (!cancelled) setResourceSharingAvailable(available);
+      if (!cancelled)
+        setResourceSharing({ dataSourceId: state.selectedDataSourceId, available });
     });
     return () => {
       cancelled = true;
     };
   }, [state.selectedDataSourceId]);
+
+  // Guard against a stale value flashing the column during a data-source switch:
+  // only trust availability resolved for the currently selected data source.
+  const resourceSharingAvailable =
+    resourceSharing.dataSourceId === state.selectedDataSourceId && resourceSharing.available;
 
   const intializeForecasters = async () => {
     // wait until selected data source is ready before doing dispatch calls if mds is enabled
