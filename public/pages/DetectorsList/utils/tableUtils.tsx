@@ -176,7 +176,6 @@ export function getColumns(dataSourceId, resourceSharingAvailable = false) {
                 <span style={columnStyle}>Access{''}</span>
               </EuiToolTip>
             ),
-            sortable: false,
             truncateText: false,
             width: '120px',
             render: (detector: Detector) => (

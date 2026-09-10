@@ -248,6 +248,21 @@ export default class AdService extends MDSEnabledClientService {
         dataSourceId,
         this.client
       );
+
+      // Global gate: the resource-sharing feature flag must be enabled on the
+      // selected data source's cluster.
+      const info = await callWithRequest('transport.request', {
+        method: 'GET',
+        path: '/_plugins/_security/dashboardsinfo',
+      });
+      if (!info?.resource_sharing_enabled) {
+        return opensearchDashboardsResponse.ok({
+          body: { ok: true, available: false },
+        });
+      }
+
+      // Per-type gate: the resource type must be a registered/protected shareable
+      // type (admins can enable sharing for only a subset of types).
       const response = await callWithRequest('transport.request', {
         method: 'GET',
         path: '/_plugins/_security/api/resource/types',
