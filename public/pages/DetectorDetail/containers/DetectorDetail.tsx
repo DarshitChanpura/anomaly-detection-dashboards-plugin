@@ -78,7 +78,7 @@ import {
 import {
   constructHrefWithDataSourceId,
   getDataSourceFromURL,
-  getResourceSharingAvailability,
+  getResourceSharingAvailableTypes,
 } from '../../../pages/utils/helpers';
 import { isServerlessDataSource } from '../../../utils/dataSourceUtils';
 
@@ -152,11 +152,10 @@ export const DetectorDetail = (props: DetectorDetailProps) => {
     useState<boolean>(false);
   useEffect(() => {
     let cancelled = false;
-    getResourceSharingAvailability(AD_RESOURCE_TYPE, dataSourceId).then(
-      (available) => {
-        if (!cancelled) setResourceSharingAvailable(available);
-      }
-    );
+    getResourceSharingAvailableTypes(dataSourceId).then((types) => {
+      if (!cancelled)
+        setResourceSharingAvailable(types.includes(AD_RESOURCE_TYPE));
+    });
     return () => {
       cancelled = true;
     };

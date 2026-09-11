@@ -71,7 +71,7 @@ import {
 import {
   filterAndSortDetectors,
   getDetectorsToDisplay,
-  getResourceSharingAvailability,
+  getResourceSharingAvailableTypes,
 } from '../../../utils/helpers';
 import { getColumns } from '../../utils/tableUtils';
 import { DETECTOR_ACTION } from '../../utils/constants';
@@ -184,8 +184,8 @@ export const DetectorList = (props: ListProps) => {
   // local Dashboards capability. Defaults to false and fails closed.
   const [resourceSharing, setResourceSharing] = useState<{
     dataSourceId: string | undefined;
-    available: boolean;
-  }>({ dataSourceId: undefined, available: false });
+    types: string[];
+  }>({ dataSourceId: undefined, types: [] });
 
   // Getting all initial monitors
   useEffect(() => {
@@ -269,13 +269,15 @@ export const DetectorList = (props: ListProps) => {
   // Probe resource-sharing availability on the selected data source.
   useEffect(() => {
     let cancelled = false;
-    getResourceSharingAvailability(
-      AD_RESOURCE_TYPE,
-      state.selectedDataSourceId
-    ).then((available) => {
-      if (!cancelled)
-        setResourceSharing({ dataSourceId: state.selectedDataSourceId, available });
-    });
+    getResourceSharingAvailableTypes(state.selectedDataSourceId).then(
+      (types) => {
+        if (!cancelled)
+          setResourceSharing({
+            dataSourceId: state.selectedDataSourceId,
+            types,
+          });
+      }
+    );
     return () => {
       cancelled = true;
     };
@@ -284,7 +286,8 @@ export const DetectorList = (props: ListProps) => {
   // Guard against a stale value flashing the column during a data-source switch:
   // only trust availability resolved for the currently selected data source.
   const resourceSharingAvailable =
-    resourceSharing.dataSourceId === state.selectedDataSourceId && resourceSharing.available;
+    resourceSharing.dataSourceId === state.selectedDataSourceId &&
+    resourceSharing.types.includes(AD_RESOURCE_TYPE);
 
   // Refresh data if user change any parameters / filter / sort
   useEffect(() => {

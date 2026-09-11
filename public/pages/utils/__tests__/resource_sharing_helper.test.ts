@@ -20,52 +20,80 @@ jest.mock('../../../../opensearch_dashboards.json', () => ({
   requiredOSDataSourcePlugins: ['opensearch-anomaly-detection'],
 }));
 
-import { getResourceSharingAvailability } from '../helpers';
+import { getResourceSharingAvailableTypes } from '../helpers';
 import { getClient } from '../../../services';
 
 const mockGet = jest.fn();
 (getClient as jest.Mock).mockReturnValue({ get: mockGet });
 
-describe('getResourceSharingAvailability', () => {
+// Queue responses for the two endpoints the helper calls: the feature-flag
+// gate (resource_sharing_enabled) and the registered-types list.
+const withHttpResponses = (enabled: unknown, types?: unknown): jest.Mock => {
+  mockGet.mockImplementation((path: string) => {
+    if (path === '/api/v1/auth/resource_sharing_enabled') {
+      return Promise.resolve(enabled);
+    }
+    if (path === '/api/resource/types') {
+      return Promise.resolve(types);
+    }
+    return Promise.reject(new Error(`unexpected path ${path}`));
+  });
+  return mockGet;
+};
+
+describe('getResourceSharingAvailableTypes', () => {
   afterEach(() => {
     mockGet.mockReset();
     (getClient as jest.Mock).mockReturnValue({ get: mockGet });
   });
 
-  it('returns true when the probe reports the type is available', async () => {
-    mockGet.mockResolvedValue({ ok: true, available: true });
-    await expect(
-      getResourceSharingAvailability('anomaly-detector', 'ds-1')
-    ).resolves.toBe(true);
-  });
-
-  it('returns false when the probe reports the type is not available', async () => {
-    mockGet.mockResolvedValue({ ok: true, available: false });
-    await expect(
-      getResourceSharingAvailability('anomaly-detector', 'ds-1')
-    ).resolves.toBe(false);
-  });
-
-  it('returns false (fail-closed) when the request throws', async () => {
-    mockGet.mockRejectedValue(new Error('not found'));
-    await expect(
-      getResourceSharingAvailability('anomaly-detector', 'ds-1')
-    ).resolves.toBe(false);
-  });
-
-  it('probes the availability route scoped to the data source when provided', async () => {
-    mockGet.mockResolvedValue({ available: true });
-    await getResourceSharingAvailability('forecaster', 'ds-9');
-    expect(mockGet).toHaveBeenCalledWith(
-      expect.stringContaining('/resource_sharing_availability/forecaster/ds-9')
+  it('returns [] when resource sharing is disabled on the data source', async () => {
+    withHttpResponses(
+      { enabled: false },
+      { types: [{ type: 'anomaly-detector' }] }
     );
+    await expect(getResourceSharingAvailableTypes('ds-1')).resolves.toEqual([]);
   });
 
-  it('omits the data source id from the route when not provided', async () => {
-    mockGet.mockResolvedValue({ available: true });
-    await getResourceSharingAvailability('anomaly-detector');
-    const calledUrl = mockGet.mock.calls[0][0] as string;
-    expect(calledUrl).toContain('/resource_sharing_availability/anomaly-detector');
-    expect(calledUrl.endsWith('/anomaly-detector')).toBe(true);
+  it('returns the registered types when enabled', async () => {
+    withHttpResponses(
+      { enabled: true },
+      { types: [{ type: 'anomaly-detector' }, { type: 'forecaster' }] }
+    );
+    await expect(getResourceSharingAvailableTypes('ds-1')).resolves.toEqual([
+      'anomaly-detector',
+      'forecaster',
+    ]);
+  });
+
+  it('supports a bare array types response', async () => {
+    withHttpResponses({ enabled: true }, [{ type: 'forecaster' }]);
+    await expect(getResourceSharingAvailableTypes('ds-1')).resolves.toEqual([
+      'forecaster',
+    ]);
+  });
+
+  it('returns [] (fail-closed) when a request throws', async () => {
+    mockGet.mockRejectedValue(new Error('not found'));
+    await expect(getResourceSharingAvailableTypes('ds-1')).resolves.toEqual([]);
+  });
+
+  it('forwards the selected data source id to both routes', async () => {
+    const get = withHttpResponses({ enabled: true }, { types: [] });
+    await getResourceSharingAvailableTypes('ds-1');
+    expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
+      query: { dataSourceId: 'ds-1' },
+    });
+    expect(get).toHaveBeenCalledWith('/api/resource/types', {
+      query: { dataSourceId: 'ds-1' },
+    });
+  });
+
+  it('sends an empty query when no data source id is given', async () => {
+    const get = withHttpResponses({ enabled: true }, { types: [] });
+    await getResourceSharingAvailableTypes();
+    expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
+      query: {},
+    });
   });
 });

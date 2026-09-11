@@ -60,7 +60,7 @@ import {
   filterAndSortForecasters,
   getAllForecastersQueryParamsWithDataSourceId,
   getDataSourceFromURL,
-  getResourceSharingAvailability,
+  getResourceSharingAvailableTypes,
   getVisibleOptions,
   isForecastingDataSourceCompatible,
   sanitizeSearchText,
@@ -231,17 +231,19 @@ export const ForecastersList = (props: ListProps) => {
   // local Dashboards capability. Defaults to false and fails closed.
   const [resourceSharing, setResourceSharing] = useState<{
     dataSourceId: string | undefined;
-    available: boolean;
-  }>({ dataSourceId: undefined, available: false });
+    types: string[];
+  }>({ dataSourceId: undefined, types: [] });
   useEffect(() => {
     let cancelled = false;
-    getResourceSharingAvailability(
-      FORECASTER_RESOURCE_TYPE,
-      state.selectedDataSourceId
-    ).then((available) => {
-      if (!cancelled)
-        setResourceSharing({ dataSourceId: state.selectedDataSourceId, available });
-    });
+    getResourceSharingAvailableTypes(state.selectedDataSourceId).then(
+      (types) => {
+        if (!cancelled)
+          setResourceSharing({
+            dataSourceId: state.selectedDataSourceId,
+            types,
+          });
+      }
+    );
     return () => {
       cancelled = true;
     };
@@ -250,7 +252,8 @@ export const ForecastersList = (props: ListProps) => {
   // Guard against a stale value flashing the column during a data-source switch:
   // only trust availability resolved for the currently selected data source.
   const resourceSharingAvailable =
-    resourceSharing.dataSourceId === state.selectedDataSourceId && resourceSharing.available;
+    resourceSharing.dataSourceId === state.selectedDataSourceId &&
+    resourceSharing.types.includes(FORECASTER_RESOURCE_TYPE);
 
   const intializeForecasters = async () => {
     // wait until selected data source is ready before doing dispatch calls if mds is enabled
@@ -641,6 +644,16 @@ export const ForecastersList = (props: ListProps) => {
   const [visibleColumns, setVisibleColumns] = useState(
     columns.map(({ id }) => id) // initialize to the full set of columns
   );
+
+  // Re-sync the visible column set when the Access column is added or removed.
+  // `columns` changes when resource-sharing availability changes (e.g. the user
+  // switches data source), but the visibleColumns state above is only seeded
+  // once on mount, so without this the Access column would never show/hide.
+  useEffect(() => {
+    setVisibleColumns(
+      getDataGridColumns(resourceSharingAvailable).map(({ id }) => id)
+    );
+  }, [resourceSharingAvailable]);
 
   const onColumnResize = useRef((eventData) => {
     console.log(eventData);

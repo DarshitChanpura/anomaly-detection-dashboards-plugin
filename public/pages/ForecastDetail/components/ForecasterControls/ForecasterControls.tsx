@@ -24,7 +24,7 @@ import {
 import moment from 'moment';
 import { getNotifications, getSavedObjectsClient, getUISettings, getDataSourceEnabled, getDataSourceManagementPlugin } from '../../../../services';
 import { FORECASTER_RESOURCE_TYPE, USE_NEW_HOME_PAGE } from '../../../../utils/constants';
-import { getResourceSharingAvailability } from '../../../utils/helpers';
+import { getResourceSharingAvailableTypes } from '../../../utils/helpers';
 import { Forecaster } from '../../../../models/interfaces';
 import { FORECASTER_STATE, isActiveState } from '../../../../../server/utils/constants';
 import { forecastStateToColorMap } from '../../../utils/constants';
@@ -112,8 +112,8 @@ export const ForecasterControls = (props: ForecasterControlsProps) => {
     const [resourceSharingAvailable, setResourceSharingAvailable] = useState<boolean>(false);
     useEffect(() => {
         let cancelled = false;
-        getResourceSharingAvailability(FORECASTER_RESOURCE_TYPE, dataSourceId).then((available) => {
-            if (!cancelled) setResourceSharingAvailable(available);
+        getResourceSharingAvailableTypes(dataSourceId).then((types) => {
+            if (!cancelled) setResourceSharingAvailable(types.includes(FORECASTER_RESOURCE_TYPE));
         });
         return () => {
             cancelled = true;

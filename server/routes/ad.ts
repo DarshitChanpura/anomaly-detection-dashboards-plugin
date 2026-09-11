@@ -100,16 +100,6 @@ export function registerADRoutes(apiRouter: Router, adService: AdService) {
   apiRouter.get('/detectors/_list', adService.getDetectors);
   apiRouter.get('/detectors/_list/{dataSourceId}', adService.getDetectors);
 
-  // Per-data-source resource-sharing availability probe (fail-closed).
-  apiRouter.get(
-    '/resource_sharing_availability/{resourceType}',
-    adService.getResourceSharingAvailability
-  );
-  apiRouter.get(
-    '/resource_sharing_availability/{resourceType}/{dataSourceId}',
-    adService.getResourceSharingAvailability
-  );
-
   // preview detector
   apiRouter.post('/detectors/preview', adService.previewDetector);
   apiRouter.post('/detectors/preview/{dataSourceId}', adService.previewDetector);
@@ -226,58 +216,6 @@ export function registerADRoutes(apiRouter: Router, adService: AdService) {
 import { MDSEnabledClientService } from '../services/MDSEnabledClientService';
 
 export default class AdService extends MDSEnabledClientService {
-  // Whether the security plugin's resource-sharing framework is available for
-  // the given resource type on the selected data source. Gated on the feature
-  // flag and per-type, per data source (not the local Dashboards capability).
-  // Fails closed.
-  getResourceSharingAvailability = async (
-    context: RequestHandlerContext,
-    request: OpenSearchDashboardsRequest,
-    opensearchDashboardsResponse: OpenSearchDashboardsResponseFactory
-  ): Promise<IOpenSearchDashboardsResponse<any>> => {
-    const { resourceType } = request.params as { resourceType: string };
-    const { dataSourceId = '' } = request.params as { dataSourceId?: string };
-    try {
-      const callWithRequest = getClientBasedOnDataSource(
-        context,
-        this.dataSourceEnabled,
-        request,
-        dataSourceId,
-        this.client
-      );
-
-      // Global gate: the resource-sharing feature flag must be enabled on the
-      // selected data source's cluster.
-      const info = await callWithRequest('transport.request', {
-        method: 'GET',
-        path: '/_plugins/_security/dashboardsinfo',
-      });
-      if (!info?.resource_sharing_enabled) {
-        return opensearchDashboardsResponse.ok({
-          body: { ok: true, available: false },
-        });
-      }
-
-      // Per-type gate: the resource type must be a registered/protected shareable
-      // type (admins can enable sharing for only a subset of types).
-      const response = await callWithRequest('transport.request', {
-        method: 'GET',
-        path: '/_plugins/_security/api/resource/types',
-      });
-      const types: string[] = (response?.types ?? []).map(
-        (t: { type: string }) => t.type
-      );
-      return opensearchDashboardsResponse.ok({
-        body: { ok: true, available: types.includes(resourceType) },
-      });
-    } catch (e) {
-      // Feature disabled or endpoint absent on older versions. Fail closed.
-      return opensearchDashboardsResponse.ok({
-        body: { ok: true, available: false },
-      });
-    }
-  };
-
   deleteDetector = async (
     context: RequestHandlerContext,
     request: OpenSearchDashboardsRequest,

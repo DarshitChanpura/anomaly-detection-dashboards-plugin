@@ -33,8 +33,6 @@ import {
 import { DETECTOR_STATE } from '../../../server/utils/constants';
 import { timeFormatter } from '@elastic/charts';
 import { getClient, getDataSourceEnabled } from '../../services';
-import { AD_RESOURCE_TYPE } from '../../utils/constants';
-import { AD_NODE_API } from '../../../utils/constants';
 import { DataSourceAttributes } from '../../../../../src/plugins/data_source/common/data_sources';
 import { SavedObject } from '../../../../../src/core/public';
 import pluginManifest from '../../../opensearch_dashboards.json';
@@ -426,33 +424,37 @@ export const mapToVisibleForecasterOptions = (items: any[], key: string) =>
   }
 
 /**
- * Whether resource sharing is available for the given resource type, via the
- * core capability registered by security-dashboards-plugin. False when that
- * plugin is not installed, the feature is disabled, or the type is not
- * registered with the resource-sharing framework — no plugin dependency
- * involved.
+ * Resource-sharing types available on the given data source. Combines the
+ * feature-flag gate (`/api/v1/auth/resource_sharing_enabled`, evaluated per
+ * data source) with the registered/protected type list (`/api/resource/types`),
+ * mirroring the shared gating helper used by the other resource-sharing consumer
+ * plugins (reporting, notifications, security-analytics, ml-commons,
+ * flow-framework). Returns [] when resource sharing is disabled or on any error
+ * (fails closed).
  */
-/**
- * Whether resource sharing is available for `resourceType` on the selected data
- * source. Probes the security resource-types API per data source rather than
- * using the local Dashboards capability. Fails closed on error.
- */
-export async function getResourceSharingAvailability(
-  resourceType: string = AD_RESOURCE_TYPE,
+export async function getResourceSharingAvailableTypes(
   dataSourceId?: string
-): Promise<boolean> {
+): Promise<string[]> {
   try {
-    const base = `${AD_NODE_API.RESOURCE_SHARING_AVAILABILITY}/${resourceType}`;
-    const url =
-      dataSourceId && dataSourceId.trim().length > 0
-        ? `${base}/${dataSourceId}`
-        : base;
-    const response = (await getClient().get(url)) as {
-      ok?: boolean;
-      available?: boolean;
-    };
-    return !!response?.available;
+    const query =
+      dataSourceId && dataSourceId.trim().length > 0 ? { dataSourceId } : {};
+    // Global gate: resource sharing must be enabled on the selected data source.
+    const info: any = await getClient().get(
+      '/api/v1/auth/resource_sharing_enabled',
+      { query }
+    );
+    if (!info?.enabled) return [];
+    // Per-type gate: the registered/protected shareable types on that source.
+    const typesResp: any = await getClient().get('/api/resource/types', {
+      query,
+    });
+    const rawTypes = Array.isArray(typesResp)
+      ? typesResp
+      : (typesResp?.types ?? []);
+    return rawTypes
+      .map((entry: { type: string }) => entry?.type)
+      .filter((type: string | undefined): type is string => Boolean(type));
   } catch (e) {
-    return false;
+    return [];
   }
 }
